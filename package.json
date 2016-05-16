@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Extracts video files from stremio cache folder",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "stremio-cache-extractor": "bin/cli.js"
   },
   "keywords": [
     "stremio",
