@@ -12,31 +12,66 @@ const readTorrent = Promise.promisify(readTorrentOriginal);
 const STREMIO_CACHE_FOLDER = path.join(process.env.HOME, 'Library', 'Application Support', 'stremio', 'stremio-cache');
 const DESTINATION_FOLDER = path.join(process.env.HOME, 'Downloads');
 
-readDir(STREMIO_CACHE_FOLDER)
-  .then(items => items.map(item => stat(path.join(STREMIO_CACHE_FOLDER, item, `${item}.torrent`))
-    .then(stats => _.assign({ name: item, folder: path.join(STREMIO_CACHE_FOLDER, item), location: path.join(STREMIO_CACHE_FOLDER, item, `${item}.torrent`) }, stats))
+const extractFilesFromCache = () => readDir(STREMIO_CACHE_FOLDER)
+  .then(searchTorrents)
+  .then(readTorrentInformation)
+  .then(searchFullyDownloadedFiles)
+  .then(copyToDestination)
+  .then(report)
+;
+
+const searchTorrents = folders => Promise.resolve()
+  .then(() => folders.map(folderName => stat(path.join(STREMIO_CACHE_FOLDER, folderName, `${folderName}.torrent`))
+    .then(stats => _.assign({
+      name: folderName,
+      folder: path.join(STREMIO_CACHE_FOLDER, folderName),
+      location: path.join(STREMIO_CACHE_FOLDER, folderName, `${folderName}.torrent`)
+    }, stats))
     .catch(err => (err.code === 'ENOTDIR' || err.code === 'ENOENT' ? null : Promise.reject(err)))
   ))
-  .then(promises => Promise.all(promises).filter(result => !!result))
-  .then(torrents => torrents.map(torrent => readTorrent(torrent.location)
+  .then(runAll)
+  .filter(notNull)
+;
+
+const readTorrentInformation = torrents => Promise.resolve()
+  .then(() => torrents.map(torrent => readTorrent(torrent.location)
     .then(stats => _.assign({ files: stats.files }, torrent))
   ))
-  .then(promises => Promise.all(promises))
-  .then(torrents => torrents.map(torrent => Promise.resolve(torrent)
-    .then(torrentInfo => torrentInfo.files.map((file, index) => stat(path.join(torrentInfo.folder, `${index}`))
+  .then(runAll)
+;
+
+const searchFullyDownloadedFiles = torrents => Promise.resolve()
+  .then(() => torrents.map(torrent => Promise.resolve()
+    .then(() => torrent.files.map((file, index) => stat(path.join(torrent.folder, `${index}`))
       .then(stats => _.assign({ name: `${index}` }, stats))
       .catch(() => null)
     ))
     .then(promises => Promise.all(promises).filter(result => !!result))
     .then(fileStats => _.assign({ fileStats }, torrent))
   ))
-  .then(promises => Promise.all(promises))
-  .filter(torrent => torrent.fileStats[0].size === torrent.files[0].length)
-  // .each(torrent => console.log(`${}`))
-  .map(torrent => ({
-    source: path.join(torrent.folder, torrent.fileStats[0].name),
-    destination: path.join(DESTINATION_FOLDER, path.basename(torrent.files[0].path))
-  }))
-  .map(copyAction => copy(copyAction.source, copyAction.destination, { replace: true }))
-  .then(promises => Promise.all(promises))
+  .then(runAll)
+  .filter(fullyDownloaded)
 ;
+
+const copyToDestination = torrents => Promise.resolve(torrents)
+  .map(getSourceAndDestination)
+  .map(copyFile)
+  .then(runAll)
+;
+
+const report = files => files.forEach(file => console.log(`Successfully extracted ${path.basename(file.destination)}`));
+
+const getSourceAndDestination = torrent => ({
+  source: path.join(torrent.folder, torrent.fileStats[0].name),
+  destination: path.join(DESTINATION_FOLDER, path.basename(torrent.files[0].path))
+});
+
+const runAll = promises => Promise.all(promises);
+
+const notNull = value => !!value;
+
+const fullyDownloaded = torrent => torrent.fileStats[0].size === torrent.files[0].length;
+
+const copyFile = file => copy(file.source, file.destination, { replace: true }).thenReturn(file);
+
+extractFilesFromCache();
