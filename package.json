@@ -1,0 +1,21 @@
+{
+  "name": "stremio-cache-extractor",
+  "version": "1.0.0",
+  "description": "Extracts video files from stremio cache folder",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "stremio",
+    "cache"
+  ],
+  "author": "alejo.fernandez@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "^3.3.5",
+    "fs.extra": "^1.3.2",
+    "lodash": "^4.12.0",
+    "read-torrent": "^1.3.0"
+  }
+}
