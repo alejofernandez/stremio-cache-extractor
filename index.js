@@ -59,7 +59,7 @@ const copyToDestination = torrents => Promise.resolve(torrents)
   .then(runAll)
 ;
 
-const report = files => files.forEach(file => console.log(`Successfully extracted ${path.basename(file.destination)}`));
+const report = files => files.forEach(file => console.log(`${file.skipped ? 'Skipped' : 'Successfully extracted'} => ${path.basename(file.destination)}`));
 
 const getSourceAndDestination = torrent => ({
   source: path.join(torrent.folder, torrent.fileStats[0].name),
@@ -72,6 +72,9 @@ const notNull = value => !!value;
 
 const fullyDownloaded = torrent => torrent.fileStats[0].size === torrent.files[0].length;
 
-const copyFile = file => copy(file.source, file.destination, { replace: true }).thenReturn(file);
+const copyFile = file => copy(file.source, file.destination, { replace: false })
+  .thenReturn(file)
+  .catch(() => _.assign({ skipped: true }, file))
+;
 
 extractFilesFromCache();
